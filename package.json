@@ -1,0 +1,41 @@
+{
+  "name": "dsh-locale-ja",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Japanese language pack for the DSH web GUI: a ja locale bundle plus a Japanese-first font stack.",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "dictionaries"
+  ],
+  "scripts": {
+    "build": "node scripts/generate-locale-ja.mjs",
+    "test": "node scripts/check.mjs",
+    "extract": "node scripts/extract-dsh-dictionaries.mjs"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml"
+      ]
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}
