@@ -1,5 +1,10 @@
 # dsh-locale-ja
 
+> **AIエージェントへ / For an AI agent:** read [`AGENTS.md`](AGENTS.md) first — the extraction and
+> generation pipeline, the baseline-version discipline, the enforced rules (keys, placeholders,
+> staleness) and the translation conventions live there.
+
+
 A **DSH profile bundle** that makes the official DSH web GUI Japanese and fixes the Chinese glyph
 shapes a Linux font stack produces.
 
