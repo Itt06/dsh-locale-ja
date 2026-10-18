@@ -55,6 +55,7 @@ check('requires no platform module', [...client.matchAll(/require\(['"]([^'"]+)[
 
 const en = JSON.parse(readFileSync(join(root, 'dictionaries', 'en.json'), 'utf8'))
 const ja = JSON.parse(readFileSync(join(root, 'dictionaries', 'ja.json'), 'utf8'))
+const plugins = JSON.parse(readFileSync(join(root, 'dictionaries', 'plugins.json'), 'utf8'))
 let baseline = 'unknown'
 try {
   baseline = JSON.parse(readFileSync(join(root, 'dictionaries', 'baseline.json'), 'utf8')).runtime
@@ -73,16 +74,46 @@ for (const [namespace, dictionary] of Object.entries(en)) {
   }
 }
 for (const [namespace, dictionary] of Object.entries(ja)) {
-  if (en[namespace] === undefined) problems.push(`${namespace}: unknown namespace`)
-  else {
+  if (en[namespace] === undefined && plugins[namespace] === undefined) problems.push(`${namespace}: unknown namespace`)
+  else if (en[namespace] !== undefined) {
     for (const key of Object.keys(dictionary)) if (en[namespace][key] === undefined) problems.push(`${namespace}.${key}: unknown key`)
   }
 }
 check(`${Object.keys(en).length} namespaces / ${keys} keys fully covered`, problems.length === 0, problems.slice(0, 5).join('; '))
 check('extraction baseline is recorded', baseline !== 'unknown')
 
+// Third-party plugin namespaces: the plugin ships zh+en, this pack adds ja only.
+const pluginProblems = []
+let pluginKeys = 0
+for (const [namespace, halves] of Object.entries(plugins)) {
+  const source = halves.en
+  const target = halves.ja
+  if (typeof source !== 'object' || typeof target !== 'object') {
+    pluginProblems.push(`${namespace}: needs both an "en" and a "ja" half`)
+    continue
+  }
+  for (const [key, english] of Object.entries(source)) {
+    const value = target[key]
+    if (typeof value !== 'string') pluginProblems.push(`${namespace}.${key}: missing`)
+    else if (value.length === 0 && english.length > 0) pluginProblems.push(`${namespace}.${key}: empty`)
+    else if ((value.match(PLACEHOLDER) ?? []).slice().sort().join('|') !== (english.match(PLACEHOLDER) ?? []).slice().sort().join('|'))
+      pluginProblems.push(`${namespace}.${key}: placeholder mismatch`)
+    pluginKeys += 1
+  }
+  for (const key of Object.keys(target)) if (source[key] === undefined) pluginProblems.push(`${namespace}.${key}: unknown key`)
+  check(`plugin namespace ${namespace} is fully covered and in the bundle`, client.includes(`    "${namespace}": {`))
+}
+check(
+  `${Object.keys(plugins).length} third-party namespaces / ${pluginKeys} keys fully covered`,
+  pluginProblems.length === 0,
+  pluginProblems.slice(0, 5).join('; '),
+)
+
 const hash = createHash('sha256').update(readFileSync(join(root, 'dictionaries', 'ja.json'))).digest('hex')
 check('bundle is not stale (sha256 of dictionaries/ja.json)', client.includes(`dictionaries: ja.json sha256 ${hash}`))
+const pluginsHash = createHash('sha256').update(readFileSync(join(root, 'dictionaries', 'plugins.json'))).digest('hex')
+check('bundle is not stale (sha256 of dictionaries/plugins.json)', client.includes(`plugins.json sha256 ${pluginsHash}`))
+check('third-party dictionaries are registered per locale only', client.includes("ctx.locale.register(namespace, 'ja', DICTIONARIES[namespace])"))
 
 console.log(failures.length === 0 ? '\ncheck: PASS' : `\ncheck: FAIL (${failures.length})`)
 process.exit(failures.length === 0 ? 0 : 1)
